@@ -41,7 +41,11 @@
           <div class="view-toggle">
             <button type="button" id="view-board" class="secondary active">Board</button>
             <button type="button" id="view-list" class="secondary">List</button>
+            <button type="button" id="view-followups" class="secondary">Follow-ups</button>
           </div>
+          <button type="button" id="export-csv" class="secondary">📤 Export CSV</button>
+          <button type="button" id="import-csv" class="secondary">📥 Import CSV</button>
+          <input type="file" id="import-csv-input" accept=".csv" style="display:none" />
           <button type="button" id="fields-button" class="secondary">Manage Fields</button>
           <button type="button" id="new-client-button">+ New Client</button>
           <button type="button" id="logout-button" class="secondary">Sign out</button>
@@ -79,6 +83,14 @@
           <li class="empty">Loading...</li>
         </ul>
       </div>
+
+      <!-- Follow-ups view -->
+      <div id="followups-view" hidden>
+        <p class="muted small" style="margin-bottom:0.75rem;">Clients with a follow-up due in the next 7 days (overdue first).</p>
+        <ul id="followup-list" class="client-list">
+          <li class="empty">Loading...</li>
+        </ul>
+      </div>
     </section>
   </main>
 
@@ -103,6 +115,8 @@
       </select>
       <label for="client-tags">Tags (comma separated)</label>
       <input type="text" id="client-tags" placeholder="web, retainer" />
+      <label for="client-followup">Follow-up Date</label>
+      <input type="date" id="client-followup" />
 
       <div id="custom-fields-container"></div>
 

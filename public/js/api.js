@@ -73,6 +73,7 @@ const API = {
   listClients(params = {}) {
     const qs = new URLSearchParams();
     if (params.search) qs.set("search", params.search);
+    if (params.followUp) qs.set("followUp", params.followUp);
     const q = qs.toString();
     return this.request(`/api/clients${q ? `?${q}` : ""}`);
   },

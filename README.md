@@ -5,13 +5,17 @@ Track clients, contacts, and engagement status. A full-stack app: vanilla JS fro
 ## Features
 
 - **Kanban board** — Lead / Active / Past / Lost columns with live counts; drag cards between columns to update status
-- **Board ⇄ List toggle** — dense list view as an alternative
-- **Client profiles** — name, company, email, phone, status, tags; fully editable in place (no duplicate entries)
+- **Board ⇄ List ⇄ Follow-ups toggle** — dense list view, plus a Follow-ups view showing clients due for follow-up in the next 7 days (overdue first) with a one-click "Done"
+- **Follow-up reminders** — set a follow-up date on any client; cards show a 📅 badge (red when overdue)
+- **Client profiles** — name, company, email, phone, status, tags, follow-up date; fully editable in place (no duplicate entries)
 - **Custom fields** — define your own profile fields (text / number / date, optional required) per business need; they appear on every client
 - **Timestamped notes** — per-client notes with timestamps, add/delete
+- **CSV import/export** — export all clients (including custom fields) to CSV; import from CSV with automatic custom-field creation for unknown columns
 - **Search** — across name, company, email, and tags
 - **Multi-user ready** — register/login with hashed passwords (scrypt) and bearer tokens
 - **REST API** — the integration surface for other tools
+- **SQLite or Postgres** — zero-config SQLite by default; set `DATABASE_URL` to use Postgres (identical API contract)
+- **SQLite or Postgres** — zero-config SQLite by default; set `DATABASE_URL` to use Postgres (identical API contract)
 
 ## Run locally
 
@@ -27,16 +31,56 @@ Open http://localhost:3000. The SQLite database is created automatically in `dat
 - `npm start` — run the server
 - `npm run dev` — run with auto-restart on file changes
 
+### Use Postgres instead of SQLite
+
+Set `DATABASE_URL` and the server uses Postgres with the identical API contract:
+
+```bash
+# PowerShell
+$env:DATABASE_URL = "postgres://user:pass@localhost:5432/clienttracker"
+npm start
+
+# or with Docker
+docker run -d --name ct-pg -e POSTGRES_PASSWORD=test -e POSTGRES_DB=clienttracker -p 5433:5432 postgres:16-alpine
+$env:DATABASE_URL = "postgres://postgres:test@localhost:5433/clienttracker"
+npm start
+```
+
+The schema is created automatically on startup. Timestamps and the API shape are identical to SQLite.
+
+### Use Postgres instead of SQLite
+
+Set `DATABASE_URL` and the server uses Postgres (tables are created automatically):
+
+```bash
+# PowerShell
+$env:DATABASE_URL = "postgres://user:pass@localhost:5432/clienttracker"
+npm start
+
+# bash
+DATABASE_URL=postgres://user:pass@localhost:5432/clienttracker npm start
+```
+
+The API contract is identical — the only change is the backend. Quick local Postgres with Docker:
+
+```bash
+docker run -d --name ct-pg -e POSTGRES_PASSWORD=test -e POSTGRES_DB=clienttracker -p 5433:5432 postgres:16-alpine
+$env:DATABASE_URL = "postgres://postgres:test@localhost:5433/clienttracker"
+```
+
 ## Project structure
 
 ```
 Client-Tracker/
 ├── server/
 │   ├── index.js          # Express app: static frontend + /api routes
-│   ├── db.js             # SQLite schema (users, sessions, clients, custom_fields, notes)
+│   ├── db.js             # Database factory (SQLite or Postgres via DATABASE_URL)
+│   ├── adapters/
+│   │   ├── sqlite.js     # SQLite backend (default, node:sqlite)
+│   │   └── postgres.js   # Postgres backend (pg)
 │   ├── auth.js           # register/login + bearer-token middleware
 │   └── routes/
-│       ├── clients.js    # Client CRUD + custom-value validation
+│       ├── clients.js    # Client CRUD + custom-value validation + follow-ups
 │       ├── customFields.js # Business-defined profile fields
 │       └── notes.js      # Timestamped client notes
 ├── public/               # Frontend (served by Express)
@@ -70,7 +114,7 @@ All endpoints below require `Authorization: Bearer <token>`.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/clients?search=` | List clients (newest first). `search` matches name/company/email/tags |
+| GET | `/api/clients?search=&followUp=1` | List clients (newest first). `search` matches name/company/email/tags; `followUp=1` returns clients with a follow-up due in the next 7 days (overdue first) |
 | GET | `/api/clients/:id` | Get one client |
 | POST | `/api/clients` | Create. Body: `{ name, company?, email?, phone?, status?, tags?, customValues? }` |
 | PUT | `/api/clients/:id` | Update (partial updates allowed) |
@@ -133,7 +177,7 @@ curl -s -X PUT http://localhost:3000/api/clients/1 \
 ## Scaling path
 
 - **Local → multi-user:** the schema already separates data per user (`clients.user_id`); deploy the same server behind a reverse proxy and it serves many users.
-- **SQLite → Postgres:** swap `server/db.js` for a Postgres client; the API contract stays identical.
+- **SQLite → Postgres:** set `DATABASE_URL` — the adapter layer keeps the API contract identical.
 - **Shared backend across tools:** when Proposal-Builder, Invoice-Generator, and Scheduling-Tool need auth/data too, extract this server into a shared service — the API is already the contract.
 
 ## Roadmap
@@ -142,8 +186,10 @@ curl -s -X PUT http://localhost:3000/api/clients/1 \
 - [x] Client CRUD with search
 - [x] Custom (business-defined) profile fields
 - [x] Timestamped notes
+- [x] Follow-up reminders (Follow-ups view, overdue highlighting)
+- [x] Import/export (CSV, with custom-field round-tripping)
+- [x] Postgres adapter (via DATABASE_URL)
 - [x] Auth (register/login, per-user data)
 - [x] REST API for tool integration
-- [ ] Follow-up reminders
-- [ ] Import/export (CSV)
-- [ ] Postgres adapter
+- [ ] Payment reminders
+- [ ] Email notifications for follow-ups

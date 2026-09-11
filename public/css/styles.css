@@ -303,6 +303,22 @@ button.link-button {
   margin-top: 0.25rem;
 }
 
+.card-followup {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--past);
+}
+
+.card-followup.overdue {
+  color: var(--danger);
+}
+
+.followup-row.overdue .client-main {
+  border-left: 3px solid var(--danger);
+  padding-left: 0.5rem;
+}
+
 /* Client list */
 .client-list {
   list-style: none;

@@ -75,13 +75,17 @@ $("logout-button").addEventListener("click", async () => {
 // --- View toggle ---
 $("view-board").addEventListener("click", () => setView("board"));
 $("view-list").addEventListener("click", () => setView("list"));
+$("view-followups").addEventListener("click", () => setView("followups"));
 
 function setView(view) {
   currentView = view;
   $("view-board").classList.toggle("active", view === "board");
   $("view-list").classList.toggle("active", view === "list");
+  $("view-followups").classList.toggle("active", view === "followups");
   $("board-view").hidden = view !== "board";
   $("list-view").hidden = view !== "list";
+  $("followups-view").hidden = view !== "followups";
+  if (view === "followups") loadFollowUps();
 }
 
 // --- Boot / data loading ---
@@ -136,11 +140,13 @@ function renderBoard(clients) {
 
 function cardHtml(c) {
   const meta = [c.company, c.email, c.phone].filter(Boolean).join(" · ");
+  const todayStr = toISODate(new Date());
   return `
     <div class="board-card" draggable="true" data-id="${c.id}" data-status="${escapeAttr(c.status)}">
       <div class="board-card-name">${escapeHtml(c.name)}</div>
       ${meta ? `<div class="board-card-meta">${escapeHtml(meta)}</div>` : ""}
       ${c.tags ? `<div class="board-card-tags">${escapeHtml(c.tags)}</div>` : ""}
+      ${c.followUpDate ? `<div class="card-followup${c.followUpDate < todayStr ? " overdue" : ""}">📅 ${escapeHtml(c.followUpDate)}${c.followUpDate < todayStr ? " (overdue)" : ""}</div>` : ""}
     </div>`;
 }
 
@@ -196,6 +202,7 @@ function renderList(clients) {
           <div class="muted small">
             ${c.email ? escapeHtml(c.email) : ""}${c.email && c.phone ? " · " : ""}${c.phone ? escapeHtml(c.phone) : ""}
           </div>
+          ${c.followUpDate ? `<div class="muted small">📅 Follow-up: ${escapeHtml(c.followUpDate)}</div>` : ""}
         </div>
         <div class="client-actions">
           <button type="button" class="secondary small" data-edit-btn="${c.id}">Edit</button>
@@ -229,6 +236,202 @@ async function deleteClient(id) {
   }
 }
 
+// --- Follow-ups view ---
+async function loadFollowUps() {
+  const list = $("followup-list");
+  try {
+    const clients = await API.listClients({ followUp: "1" });
+    if (clients.length === 0) {
+      list.innerHTML = '<li class="empty">No follow-ups due in the next 7 days.</li>';
+      return;
+    }
+    const todayStr = toISODate(new Date());
+    list.innerHTML = clients
+      .map((c) => {
+        const overdue = c.followUpDate < todayStr;
+        return `
+        <li class="client-row followup-row${overdue ? " overdue" : ""}" data-edit="${c.id}">
+          <div class="client-main">
+            <strong>${escapeHtml(c.name)}</strong>
+            <span class="badge badge-${escapeHtml(c.status)}">${STATUS_LABELS[c.status] || escapeHtml(c.status)}</span>
+            <div class="muted small">📅 Follow-up: ${escapeHtml(c.followUpDate)}${overdue ? " <strong>(overdue)</strong>" : ""}</div>
+          </div>
+          <div class="client-actions">
+            <button type="button" class="secondary small" data-edit-btn="${c.id}">Edit</button>
+            <button type="button" class="secondary small" data-done="${c.id}">✓ Done</button>
+          </div>
+        </li>`;
+      })
+      .join("");
+    list.querySelectorAll("[data-edit]").forEach((row) =>
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        openEditor(Number(row.dataset.edit));
+      })
+    );
+    list.querySelectorAll("[data-edit-btn]").forEach((btn) =>
+      btn.addEventListener("click", () => openEditor(Number(btn.dataset.editBtn)))
+    );
+    list.querySelectorAll("[data-done]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          await API.updateClient(Number(btn.dataset.done), { followUpDate: null });
+          loadFollowUps();
+        } catch (err) {
+          alert(err.message);
+        }
+      })
+    );
+  } catch (err) {
+    list.innerHTML = `<li class="empty">${escapeHtml(err.message)}</li>`;
+  }
+}
+
+// --- CSV export / import ---
+$("export-csv").addEventListener("click", exportClientsCSV);
+$("import-csv").addEventListener("click", () => $("import-csv-input").click());
+$("import-csv-input").addEventListener("change", importClientsCSV);
+
+function csvEscape(value) {
+  const s = String(value === null || value === undefined ? "" : value);
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+async function exportClientsCSV() {
+  try {
+    const clients = await API.listClients({});
+    const fields = await API.listCustomFields();
+    const headers = ["name", "company", "email", "phone", "status", "tags", "notes", "follow_up_date", ...fields.map((f) => f.name)];
+    const rows = [headers];
+    clients.forEach((c) => {
+      const row = [c.name, c.company, c.email, c.phone, c.status, c.tags, c.notes, c.followUpDate];
+      fields.forEach((f) => row.push((c.customValues && c.customValues[f.id]) || ""));
+      rows.push(row);
+    });
+    const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "clients-" + toISODate(new Date()) + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      field = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else {
+      field += ch;
+    }
+  }
+  row.push(field);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+
+async function importClientsCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if (rows.length < 2) {
+    alert("CSV is empty or missing a header row.");
+    event.target.value = "";
+    return;
+  }
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
+  const standardHeaders = ["name", "company", "email", "phone", "status", "tags", "notes", "follow_up_date"];
+  let fields = await API.listCustomFields();
+
+  // Create custom fields for unknown headers so exports round-trip.
+  for (const h of headers) {
+    if (standardHeaders.includes(h) || !h) continue;
+    if (!fields.some((f) => f.name.toLowerCase() === h)) {
+      try {
+        const created = await API.createCustomField({ name: h, type: "text" });
+        fields.push(created);
+      } catch {
+        // Field already exists or name conflict — skip.
+      }
+    }
+  }
+
+  let created = 0;
+  let skipped = 0;
+  let errors = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const get = (name) => {
+      const idx = headers.indexOf(name);
+      return idx >= 0 ? (row[idx] || "").trim() : "";
+    };
+    const name = get("name");
+    if (!name) {
+      skipped++;
+      continue;
+    }
+    const status = get("status");
+    const payload = {
+      name,
+      company: get("company") || null,
+      email: get("email") || null,
+      phone: get("phone") || null,
+      status: STATUS_LABELS[status] ? status : "lead",
+      tags: get("tags") || null,
+      notes: get("notes") || null,
+      followUpDate: get("follow_up_date") || null,
+      customValues: {},
+    };
+    for (const f of fields) {
+      const val = get(f.name.toLowerCase());
+      if (val) payload.customValues[f.id] = val;
+    }
+    try {
+      await API.createClient(payload);
+      created++;
+    } catch {
+      errors++;
+    }
+  }
+  alert(
+    "Imported " + created + " client(s)" +
+    (skipped ? ", skipped " + skipped + " (no name)" : "") +
+    (errors ? ", " + errors + " failed" : "") + "."
+  );
+  loadClients();
+  event.target.value = "";
+}
+
 // --- Client editor dialog ---
 const dialog = $("client-dialog");
 const clientForm = $("client-form");
@@ -252,6 +455,7 @@ function openEditor(id) {
         $("client-phone").value = c.phone || "";
         $("client-status").value = c.status || "lead";
         $("client-tags").value = c.tags || "";
+        $("client-followup").value = c.followUpDate || "";
         buildCustomFieldInputs(c.customValues || {});
         loadNotes(id);
       })
@@ -304,6 +508,7 @@ clientForm.addEventListener("submit", async (event) => {
     phone: $("client-phone").value.trim() || null,
     status: $("client-status").value,
     tags: $("client-tags").value.trim() || null,
+    followUpDate: $("client-followup").value || null,
     customValues,
   };
 
@@ -460,6 +665,10 @@ async function deleteField(id) {
 }
 
 // --- Helpers ---
+function toISODate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
 function formatTimestamp(sqliteUtc) {
   const d = new Date(sqliteUtc.replace(" ", "T") + "Z");
   return d.toLocaleString(undefined, {
