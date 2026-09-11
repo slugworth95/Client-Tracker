@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Tracker</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Client Tracker</h1>
+    <p class="tagline">Track clients, contacts, and engagement status.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Add Client</h2>
+      <form id="client-form">
+        <label for="client-name">Client Name</label>
+        <input type="text" id="client-name" placeholder="Acme Corp" required />
+
+        <label for="client-email">Email</label>
+        <input type="email" id="client-email" placeholder="billing@acme.com" />
+
+        <label for="client-status">Status</label>
+        <select id="client-status">
+          <option value="lead">Lead</option>
+          <option value="active">Active</option>
+          <option value="past">Past</option>
+          <option value="lost">Lost</option>
+        </select>
+
+        <button type="submit">Add Client</button>
+      </form>
+      <p id="status" class="status" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>Clients</h2>
+      <ul id="client-list" class="client-list">
+        <li class="empty">No clients yet.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
