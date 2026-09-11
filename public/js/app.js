@@ -66,7 +66,8 @@ authForm.addEventListener("submit", async (event) => {
   }
 });
 
-$("logout-button").addEventListener("click", () => {
+$("logout-button").addEventListener("click", async () => {
+  await API.logout();
   API.setToken(null);
   showAuth();
 });
@@ -481,5 +482,17 @@ function escapeAttr(value) {
 }
 
 // --- Boot ---
-if (API.token) enterApp();
-else showAuth();
+async function boot() {
+  if (API.token) {
+    try {
+      await API.me();
+      enterApp();
+    } catch {
+      API.setToken(null);
+      showAuth();
+    }
+  } else {
+    showAuth();
+  }
+}
+boot();
