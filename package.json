@@ -1,0 +1,17 @@
+{
+  "name": "client-tracker",
+  "version": "1.0.0",
+  "description": "Client tracking with a REST API for future integration with Proposal-Builder, Invoice-Generator, and Scheduling-Tool.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
