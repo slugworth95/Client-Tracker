@@ -4,6 +4,8 @@ const path = require("node:path");
 const express = require("express");
 const { register, login, requireAuth } = require("./auth");
 const clientsRouter = require("./routes/clients");
+const customFieldsRouter = require("./routes/customFields");
+const notesRouter = require("./routes/notes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +15,7 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Health check — lets other tools discover this service.
 app.get("/api/health", (req, res) => {
-  res.json({ service: "client-tracker", status: "ok", version: "1.0.0" });
+  res.json({ service: "client-tracker", status: "ok", version: "1.1.0" });
 });
 
 // Auth
@@ -55,6 +57,8 @@ app.post("/api/auth/login", (req, res) => {
 
 // Protected API
 app.use("/api/clients", requireAuth, clientsRouter);
+app.use("/api/custom-fields", requireAuth, customFieldsRouter);
+app.use("/api", requireAuth, notesRouter);
 
 // Error handler (keeps stack traces out of API responses)
 app.use((err, req, res, next) => {

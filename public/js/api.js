@@ -53,7 +53,6 @@ const API = {
   listClients(params = {}) {
     const qs = new URLSearchParams();
     if (params.search) qs.set("search", params.search);
-    if (params.status) qs.set("status", params.status);
     const q = qs.toString();
     return this.request(`/api/clients${q ? `?${q}` : ""}`);
   },
@@ -72,5 +71,36 @@ const API = {
 
   deleteClient(id) {
     return this.request(`/api/clients/${id}`, { method: "DELETE" });
+  },
+
+  listCustomFields() {
+    return this.request("/api/custom-fields");
+  },
+
+  createCustomField(field) {
+    return this.request("/api/custom-fields", { method: "POST", body: JSON.stringify(field) });
+  },
+
+  updateCustomField(id, field) {
+    return this.request(`/api/custom-fields/${id}`, { method: "PUT", body: JSON.stringify(field) });
+  },
+
+  deleteCustomField(id) {
+    return this.request(`/api/custom-fields/${id}`, { method: "DELETE" });
+  },
+
+  listNotes(clientId) {
+    return this.request(`/api/clients/${clientId}/notes`);
+  },
+
+  addNote(clientId, body) {
+    return this.request(`/api/clients/${clientId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    });
+  },
+
+  deleteNote(id) {
+    return this.request(`/api/notes/${id}`, { method: "DELETE" });
   },
 };

@@ -13,7 +13,7 @@
   </header>
 
   <!-- Auth view -->
-  <main id="auth-view" class="container hidden">
+  <main id="auth-view" class="container" hidden>
     <section class="card">
       <h2 id="auth-title">Sign In</h2>
       <form id="auth-form">
@@ -33,26 +33,52 @@
   </main>
 
   <!-- App view -->
-  <main id="app-view" class="container hidden">
+  <main id="app-view" class="container-wide" hidden>
     <section class="card">
       <div class="toolbar">
         <h2>Clients</h2>
-        <button type="button" id="logout-button" class="secondary">Sign out</button>
+        <div class="toolbar-actions">
+          <div class="view-toggle">
+            <button type="button" id="view-board" class="secondary active">Board</button>
+            <button type="button" id="view-list" class="secondary">List</button>
+          </div>
+          <button type="button" id="fields-button" class="secondary">Manage Fields</button>
+          <button type="button" id="new-client-button">+ New Client</button>
+          <button type="button" id="logout-button" class="secondary">Sign out</button>
+        </div>
       </div>
       <div class="filters">
         <input type="search" id="search" placeholder="Search name, company, email, tags..." />
-        <select id="status-filter">
-          <option value="">All statuses</option>
-          <option value="lead">Lead</option>
-          <option value="active">Active</option>
-          <option value="past">Past</option>
-          <option value="lost">Lost</option>
-        </select>
-        <button type="button" id="new-client-button">+ New Client</button>
       </div>
-      <ul id="client-list" class="client-list">
-        <li class="empty">Loading...</li>
-      </ul>
+
+      <!-- Board view -->
+      <div id="board-view">
+        <div class="board">
+          <div class="board-column" data-status="lead">
+            <div class="column-header"><span class="dot dot-lead"></span> Lead <span class="count" id="count-lead">0</span></div>
+            <div class="column-cards" data-drop="lead"></div>
+          </div>
+          <div class="board-column" data-status="active">
+            <div class="column-header"><span class="dot dot-active"></span> Active <span class="count" id="count-active">0</span></div>
+            <div class="column-cards" data-drop="active"></div>
+          </div>
+          <div class="board-column" data-status="past">
+            <div class="column-header"><span class="dot dot-past"></span> Past <span class="count" id="count-past">0</span></div>
+            <div class="column-cards" data-drop="past"></div>
+          </div>
+          <div class="board-column" data-status="lost">
+            <div class="column-header"><span class="dot dot-lost"></span> Lost <span class="count" id="count-lost">0</span></div>
+            <div class="column-cards" data-drop="lost"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- List view -->
+      <div id="list-view" hidden>
+        <ul id="client-list" class="client-list">
+          <li class="empty">Loading...</li>
+        </ul>
+      </div>
     </section>
   </main>
 
@@ -77,13 +103,45 @@
       </select>
       <label for="client-tags">Tags (comma separated)</label>
       <input type="text" id="client-tags" placeholder="web, retainer" />
-      <label for="client-notes">Notes</label>
-      <textarea id="client-notes" rows="3"></textarea>
+
+      <div id="custom-fields-container"></div>
+
+      <div id="notes-section" hidden>
+        <h3>Notes</h3>
+        <ul id="note-list" class="note-list"></ul>
+        <div class="note-add">
+          <input type="text" id="note-input" placeholder="Add a note..." />
+          <button type="button" id="note-add-button" class="secondary small">Add</button>
+        </div>
+      </div>
+
       <div class="dialog-actions">
         <button type="button" id="client-cancel" class="secondary">Cancel</button>
         <button type="submit" id="client-save">Save</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Custom fields dialog -->
+  <dialog id="fields-dialog">
+    <h2>Custom Fields</h2>
+    <p class="muted small">Define extra fields for client profiles (e.g. VAT number, website, birthday).</p>
+    <form id="field-form">
+      <div class="field-row">
+        <input type="text" id="field-name" placeholder="Field name (e.g. VAT Number)" required />
+        <select id="field-type">
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="date">Date</option>
+        </select>
+        <label class="checkbox-label"><input type="checkbox" id="field-required" /> Required</label>
+        <button type="submit" class="small" id="field-save">Add</button>
+      </div>
+    </form>
+    <ul id="field-list" class="field-list"></ul>
+    <div class="dialog-actions">
+      <button type="button" id="fields-done" class="secondary">Done</button>
+    </div>
   </dialog>
 
   <script src="js/api.js"></script>
